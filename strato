@@ -2,98 +2,111 @@
 
 # Strato Pi Utility
 #
-# (c) 2015-2017 Sfera Labs S.r.l.
+# (c) 2015-2022 Sfera Labs S.r.l.
+
+function usage (){
+        echo "== Strato Pi Utility =="
+        echo "Usage: strato beep on|off|length_millis|length_millis pause_millis repeats"
+        echo "       strato watchdog enable|disable|status|heartbeat|timeout"
+        echo "       strato shutdown"
+        echo "       strato battery"
+}
 
 if [ $# == 0 ]; then
-	echo "Usage: strato beep on|off|length_millis|length_millis pause_millis repeats"
-	echo "       strato watchdog enable|disable|heartbeat|timeout"
-	echo "       strato shutdown"
-	echo "       strato battery"
+        usage
+else
+        case "$1" in
+                beep )
+                        if [ ! -d "/sys/class/gpio/gpio20" ]; then
+                                echo 20 > /sys/class/gpio/export
+                                echo out > /sys/class/gpio/gpio20/direction
+                        fi
+
+                        case "$2" in
+                                on )
+                                        echo 1 > /sys/class/gpio/gpio20/value
+                                ;;
+                                off )
+                                        echo 0 > /sys/class/gpio/gpio20/value
+                                ;;
+                                * )
+                                        if [ $# == 2 ]; then
+                                                echo 1 > /sys/class/gpio/gpio20/value
+                                                sleep $(echo "$2" | awk '{printf "%.3f \n", $1/1000}')
+                                                echo 0 > /sys/class/gpio/gpio20/value
+                                        elif [ $# == 4 ]; then
+                                                for i in `seq 1 $4`;
+                                                do
+                                                        echo 1 > /sys/class/gpio/gpio20/value
+                                                        sleep $(echo "$2" | awk '{printf "%.3f \n", $1/1000}')
+                                                        echo 0 > /sys/class/gpio/gpio20/value
+                                                        sleep $(echo "$3" | awk '{printf "%.3f \n", $1/1000}')
+                                                done
+                                        else
+                                                echo "Usage: strato beep on|off|length_millis|length_millis pause_millis repeats"
+                                        fi
+                                ;;
+                        esac
+                        ;;
+
+                watchdog )
+                        if [ ! -d "/sys/class/gpio/gpio5" ]; then
+                                echo 5 > /sys/class/gpio/export
+                                echo out > /sys/class/gpio/gpio5/direction
+                        fi
+                        if [ ! -d "/sys/class/gpio/gpio6" ]; then
+                                echo 6 > /sys/class/gpio/export
+                                echo out > /sys/class/gpio/gpio6/direction
+                        fi
+                        if [ ! -d "/sys/class/gpio/gpio12" ]; then
+                                echo 12 > /sys/class/gpio/export
+                                echo in > /sys/class/gpio/gpio12/direction
+                        fi
+
+                        case "$2" in
+                                enable )
+                                        echo 1 > /sys/class/gpio/gpio6/value
+                                ;;
+                                disable )
+                                        echo 0 > /sys/class/gpio/gpio6/value
+                                ;;
+                                status )
+                                        exit $(cat /sys/class/gpio/gpio6/value)
+                                ;;
+                                heartbeat )
+                                        if [ $(cat /sys/class/gpio/gpio5/value) == 0 ]; then
+                                                echo 1 > /sys/class/gpio/gpio5/value
+                                        else
+                                                echo 0 > /sys/class/gpio/gpio5/value
+                                        fi
+                                ;;
+                                timeout )
+                                        exit $(cat /sys/class/gpio/gpio12/value)
+                                ;;
+                                * )
+                                        echo "Usage: strato watchdog enable|disable|status|heartbeat|timeout"
+                                ;;
+                        esac
+                        ;;
+
+                shutdown )
+                        if [ ! -d "/sys/class/gpio/gpio16" ]; then
+                                echo 16 > /sys/class/gpio/export
+                                echo out > /sys/class/gpio/gpio16/direction
+                        fi
+                        echo 1 > /sys/class/gpio/gpio16/value
+                        ;;
+
+                battery )
+                        if [ ! -d "/sys/class/gpio/gpio26" ]; then
+                                echo 26 > /sys/class/gpio/export
+                                echo in > /sys/class/gpio/gpio26/direction
+                        fi
+                        exit $(cat /sys/class/gpio/gpio26/value)
+                        ;;
+
+                * )
+                        usage
+                        ;;
+        esac
 fi
-case "$1" in
-	beep )
-		if [ ! -d "/sys/class/gpio/gpio20" ]; then
-			echo 20 > /sys/class/gpio/export
-			echo out > /sys/class/gpio/gpio20/direction
-		fi
-
-		case "$2" in
-			on )
-				echo 1 > /sys/class/gpio/gpio20/value
-			;;
-			off )
-				echo 0 > /sys/class/gpio/gpio20/value
-			;;
-			* )
-				if [ $# == 2 ]; then
-					echo 1 > /sys/class/gpio/gpio20/value
-					sleep $(echo "$2" | awk '{printf "%.3f \n", $1/1000}')
-					echo 0 > /sys/class/gpio/gpio20/value
-				elif [ $# == 4 ]; then
-					for i in `seq 1 $4`;
-        			do
-						echo 1 > /sys/class/gpio/gpio20/value
-						sleep $(echo "$2" | awk '{printf "%.3f \n", $1/1000}')
-						echo 0 > /sys/class/gpio/gpio20/value
-						sleep $(echo "$3" | awk '{printf "%.3f \n", $1/1000}')
-        			done 
-				else
-					echo "Usage: strato beep on|off|length_millis|length_millis pause_millis repeats"
-				fi
-			;;
-		esac
-		;;
-
-	watchdog )
-		if [ ! -d "/sys/class/gpio/gpio5" ]; then
-			echo 5 > /sys/class/gpio/export
-			echo out > /sys/class/gpio/gpio5/direction
-		fi
-		if [ ! -d "/sys/class/gpio/gpio6" ]; then
-			echo 6 > /sys/class/gpio/export
-			echo out > /sys/class/gpio/gpio6/direction
-		fi
-		if [ ! -d "/sys/class/gpio/gpio12" ]; then
-			echo 12 > /sys/class/gpio/export
-			echo in > /sys/class/gpio/gpio12/direction
-		fi
-
-		case "$2" in
-			enable )
-				echo 1 > /sys/class/gpio/gpio6/value
-			;;
-			disable )
-				echo 0 > /sys/class/gpio/gpio6/value
-			;;
-			heartbeat )
-				if [ $(cat /sys/class/gpio/gpio5/value) == 0 ]; then
-					echo 1 > /sys/class/gpio/gpio5/value
-				else
-					echo 0 > /sys/class/gpio/gpio5/value
-				fi
-			;;
-			timeout )
-				exit $(cat /sys/class/gpio/gpio12/value)
-			;;
-			* )
-				echo "Usage: strato watchdog enable|disable|heartbeat|timeout"
-			;;
-		esac
-		;;
-
-	shutdown )
-		if [ ! -d "/sys/class/gpio/gpio16" ]; then
-			echo 16 > /sys/class/gpio/export
-			echo out > /sys/class/gpio/gpio16/direction
-		fi
-		echo 1 > /sys/class/gpio/gpio16/value
-		;;
-
-	battery )
-		if [ ! -d "/sys/class/gpio/gpio26" ]; then
-			echo 26 > /sys/class/gpio/export
-			echo in > /sys/class/gpio/gpio26/direction
-		fi
-		exit $(cat /sys/class/gpio/gpio26/value)
-		;;
-esac
