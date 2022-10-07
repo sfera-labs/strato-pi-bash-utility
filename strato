@@ -71,7 +71,7 @@ else
                                         echo 0 > /sys/class/gpio/gpio6/value
                                 ;;
                                 status )
-                                        if [[ $(cat /sys/class/gpio/gpio6/value) == "0" ]] ; then echo "disabled" ; else echo "enabled" ; fi
+                                        exit $(cat /sys/class/gpio/gpio6/value)
                                 ;;
                                 heartbeat )
                                         if [ $(cat /sys/class/gpio/gpio5/value) == 0 ]; then
